@@ -15,6 +15,10 @@ const bot = new TelegramBot(TOKEN)
 
 // This informs the Telegram servers of the new webhook.
 bot.setWebHook(`${url}/bot${TOKEN}`)
+bot.setMyCommands([
+  { command: '/stop', description: 'stop auto-reply 哈們' },
+  { command: '/start', description: 'start auto-reply 哈們' },
+])
 
 const app = express()
 
@@ -32,8 +36,22 @@ app.listen(port, () => {
   console.log(`Express server is listening on ${port}`)
 })
 
+let bannedChatId = []
+bot.onText(/\/stop/, (msg) => {
+  const chatId = msg.chat.id
+  if (!bannedChatId.includes(chatId)) {
+    bannedChatId.push(chatId)
+  }
+})
+
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id
+  bannedChatId = bannedChatId.filter((id) => id !== chatId)
+})
+
 // Just to ping!
 bot.on('message', (msg) => {
   console.log(msg)
-  bot.sendMessage(msg.chat.id, '哈們')
+  if (!bannedChatId.includes(msg.chat.id)) bot.sendMessage(msg.chat.id, '哈們')
+  else console.log(`${msg.chat.id} is stop`)
 })

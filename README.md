@@ -17,7 +17,7 @@ There are some environment variables that Hadoor will use:
 
 In local development, `dotenv` is used, so you can only create a file called `.env` in root directory. `dotenv` will work as expect.
 
-For more informaiton about dotenv, visit [dotenv](https://github.com/motdotla/dotenv#readme).
+For more information about dotenv, visit [dotenv](https://github.com/motdotla/dotenv#readme).
 
 ## start server
 

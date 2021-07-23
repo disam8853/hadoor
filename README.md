@@ -19,7 +19,7 @@ In local development, `dotenv` is used, so you can only create a file called `.e
 
 For more informaiton about dotenv, visit [dotenv](https://github.com/motdotla/dotenv#readme).
 
-# start server
+## start server
 
 In production:
 

@@ -2,6 +2,7 @@ const TelegramBot = require('node-telegram-bot-api')
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config()
 }
+const ChatRoom = require('./utils/database.js')
 
 // replace the value below with the Telegram token you receive from @BotFather
 const TOKEN = process.env.TOKEN
@@ -13,12 +14,13 @@ const express = require('express')
 // No need to pass any parameters as we will handle the updates with Express
 const bot = new TelegramBot(TOKEN)
 
+const commands = {
+  stop: { regex: /\/stop/, command: '/stop', description: 'stop auto-reply 哈們' },
+  start: { regex: /\/start/, command: '/start', description: 'start auto-reply 哈們' },
+}
 // This informs the Telegram servers of the new webhook.
 bot.setWebHook(`${url}/bot${TOKEN}`)
-bot.setMyCommands([
-  { command: '/stop', description: 'stop auto-reply 哈們' },
-  { command: '/start', description: 'start auto-reply 哈們' },
-])
+bot.setMyCommands([commands.stop, commands.start])
 
 const app = express()
 
@@ -31,27 +33,37 @@ app.post(`/bot${TOKEN}`, (req, res) => {
   res.sendStatus(200)
 })
 
+// keep Heroku awake
+app.get('/awake', (req, res) => {
+  res.sendStatus(200)
+})
+
 // Start Express Server
 app.listen(port, () => {
   console.log(`Express server is listening on ${port}`)
 })
 
-let bannedChatId = []
-bot.onText(/\/stop/, (msg) => {
+bot.onText(commands.stop.regex, async (msg) => {
   const chatId = msg.chat.id
-  if (!bannedChatId.includes(chatId)) {
-    bannedChatId.push(chatId)
+  await ChatRoom.findOneAndUpdate({ chatId }, { stop: true }, { upsert: true }).exec()
+})
+
+bot.onText(commands.start.regex, async (msg) => {
+  const chatId = msg.chat.id
+  await ChatRoom.findOneAndUpdate({ chatId }, { stop: false }, { upsert: true }).exec()
+})
+
+bot.on('message', async (msg) => {
+  // do nothing when message is a command
+  for (const prop in commands) {
+    if (commands[prop].regex.test(msg.text)) return
   }
-})
-
-bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id
-  bannedChatId = bannedChatId.filter((id) => id !== chatId)
-})
-
-// Just to ping!
-bot.on('message', (msg) => {
-  console.log(msg)
-  if (!bannedChatId.includes(msg.chat.id)) bot.sendMessage(msg.chat.id, '哈們')
-  else console.log(`${msg.chat.id} is stop`)
+  let chatRoom = await ChatRoom.findOne({ chatId }).exec()
+  // create one if chat room is not found in DB
+  if (!chatRoom) {
+    chatRoom = await ChatRoom.create({ chatId })
+  }
+  // reply 哈們 when `stop` is false
+  if (!chatRoom.stop) bot.sendMessage(chatId, '哈們')
 })
